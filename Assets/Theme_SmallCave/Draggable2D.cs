@@ -3,6 +3,13 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class Draggable2D : MonoBehaviour
 {
+    public enum SquareType
+    {
+        White,
+        Blue,
+        Red
+    }
+    
     private Rigidbody2D rb;
     private Collider2D col;
     private bool isDragging = false;
@@ -10,6 +17,9 @@ public class Draggable2D : MonoBehaviour
     private Vector3 mouseOffset;
     private float mouseZ;
 
+    [Header("Тип квадрата")]
+    public SquareType type;
+    
     [Header("Слои окружения")]
     [Tooltip("Слой стен (например, Wall)")]
     public LayerMask wallMask;
@@ -21,6 +31,12 @@ public class Draggable2D : MonoBehaviour
     [Tooltip("Насколько сильно учитывается движение мыши при броске")]
     public float throwForce = 15f;
 
+    // Радиус сканирования соседей
+    private const float DETECTION_RADIUS = 2.0f;
+    
+    // Маска объектов, которые можно сканировать
+    [SerializeField] private LayerMask detectionMask;
+    
     private Vector2 lastMouseWorldPos;
     private Vector2 mouseVelocity;
 
@@ -108,6 +124,8 @@ public class Draggable2D : MonoBehaviour
                 rb.MovePosition(safePos);
             }
         }
+        
+        ScanNearbySquares();
     }
 
     private Vector3 GetMouseWorldPos()
@@ -135,5 +153,44 @@ public class Draggable2D : MonoBehaviour
                 rb.gravityScale = 1;
             isSticky = false;
         }
+    }
+    
+    private void ScanNearbySquares()
+    {
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, DETECTION_RADIUS, detectionMask);
+
+        foreach (Collider2D hit in hits)
+        {
+            if (hit.gameObject == this.gameObject) continue; // себя пропускаем
+
+            Draggable2D other = hit.GetComponent<Draggable2D>();
+            if (other == null) continue;
+
+            // Проверяем несовместимость типов
+            if (IsIncompatibleWith(other.type))
+            {
+                Debug.Log($"{name} ({type}) слишком близко к {other.name} ({other.type})!");
+
+                // Например — можно чуть оттолкнуть
+                //Vector2 away = (transform.position - other.transform.position).normalized;
+                //rb.AddForce(away * 5f, ForceMode2D.Impulse);
+            }
+        }
+    }
+
+    private bool IsIncompatibleWith(SquareType other)
+    {
+        // 🔴 Пример правил: синий не любит красный
+        if ((type == SquareType.Blue && other == SquareType.Red) ||
+            (type == SquareType.Red && other == SquareType.Blue))
+            return true;
+
+        return false;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, DETECTION_RADIUS);
     }
 }
