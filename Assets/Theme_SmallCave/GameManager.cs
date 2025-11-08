@@ -12,6 +12,7 @@ public class GameManager : MonoBehaviour
     public CanvasGroup startPanel;
 
     private List<Draggable2D> itemsList;
+    private Collider2D[] allColliders;
     private bool finished = false;
     
     private void Awake()
@@ -40,6 +41,8 @@ public class GameManager : MonoBehaviour
             if (obj.gameObject.layer == layerToFind)
                 itemsList.Add(obj);
         }
+        
+        allColliders =  FindObjectsOfType<Collider2D>();
 
         Debug.Log($"Найдено {itemsList.Count} объектов на слое {LayerMask.LayerToName(layerToFind)}");
         
@@ -67,6 +70,11 @@ public class GameManager : MonoBehaviour
     public Collider2D GetFloorCollider()
     {
         return floorCollider;
+    }
+
+    public Collider2D[] GetAllColliders()
+    {
+        return allColliders;
     }
 
     private void ShowFinishScreen()
