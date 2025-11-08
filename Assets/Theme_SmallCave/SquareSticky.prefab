@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5539968479808784724}
   - component: {fileID: 3626267509286368621}
   - component: {fileID: 8966798101255177774}
+  - component: {fileID: 3683102984842701217}
   m_Layer: 9
   m_Name: SquareSticky
   m_TagString: Untagged
@@ -127,9 +128,26 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 128
   throwForce: 0.5
+  rotationSpeed: 120
+  animator: {fileID: 3683102984842701217}
+  explosionDelay: 3
+  detectionRadius: 1
   detectionMask:
     serializedVersion: 2
     m_Bits: 512
+--- !u!114 &3683102984842701217
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5654630275077188157}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24b220f3e7a6a53489f75177a611dc47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  visualTransform: {fileID: 7386110898427857207}
 --- !u!1 &5973137634586716806
 GameObject:
   m_ObjectHideFlags: 0

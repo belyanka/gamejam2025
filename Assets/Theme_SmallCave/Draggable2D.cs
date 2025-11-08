@@ -1,11 +1,14 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class Draggable2D : MonoBehaviour
 {
     public enum SquareType
     {
-        White,
+        Normal,
         Blue,
         Red
     }
@@ -17,6 +20,8 @@ public class Draggable2D : MonoBehaviour
     private Vector3 mouseOffset;
     private float mouseZ;
 
+    public bool IsStickable = false;
+    
     [Header("Тип квадрата")]
     public SquareType type;
     
@@ -30,15 +35,25 @@ public class Draggable2D : MonoBehaviour
     [Header("Настройки инерции")]
     [Tooltip("Насколько сильно учитывается движение мыши при броске")]
     public float throwForce = 15f;
+    
+    [Tooltip("Скорость вращения при удержании (градусов/сек)")]
+    public float rotationSpeed = 120f;
+    
+    public ItemAnimator animator;
 
-    // Радиус сканирования соседей
-    private const float DETECTION_RADIUS = 2.0f;
+    public float explosionDelay = 3f;
+    public float detectionRadius = 2.0f; 
+
     
     // Маска объектов, которые можно сканировать
     [SerializeField] private LayerMask detectionMask;
     
     private Vector2 lastMouseWorldPos;
     private Vector2 mouseVelocity;
+    
+    // Храним активные взрывы (чтобы не запускать дубли)
+    private static Dictionary<(Draggable2D, Draggable2D), Coroutine> activeExplosions = new();
+
 
     private void Awake()
     {
@@ -48,6 +63,9 @@ public class Draggable2D : MonoBehaviour
 
     private void OnMouseDown()
     {
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
+        
         // Если объект был приклеен — отклеиваем
         if (isSticky)
         {
@@ -59,6 +77,8 @@ public class Draggable2D : MonoBehaviour
         rb.velocity = Vector2.zero;
         rb.angularVelocity = 0;
         isDragging = true;
+        
+        gameObject.layer = LayerMask.NameToLayer("Dragging");
 
         mouseZ = Camera.main.WorldToScreenPoint(transform.position).z;
         mouseOffset = transform.position - GetMouseWorldPos();
@@ -69,6 +89,9 @@ public class Draggable2D : MonoBehaviour
 
     private void OnMouseUp()
     {
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
+        
         rb.bodyType = RigidbodyType2D.Dynamic;
 
         if (isSticky)
@@ -82,11 +105,19 @@ public class Draggable2D : MonoBehaviour
             rb.velocity = mouseVelocity * throwForce; // применяем инерцию
         }
 
+        gameObject.layer = LayerMask.NameToLayer("Item");
         isDragging = false;
     }
 
     private void FixedUpdate()
     {
+        if (isDragging)
+        {
+            HandleRotationInput();
+        }
+        
+        CheckForConflictProximity();
+        
         if (!isDragging) return;
 
         Vector3 mouseWorld = GetMouseWorldPos() + mouseOffset;
@@ -124,8 +155,6 @@ public class Draggable2D : MonoBehaviour
                 rb.MovePosition(safePos);
             }
         }
-        
-        ScanNearbySquares();
     }
 
     private Vector3 GetMouseWorldPos()
@@ -137,7 +166,7 @@ public class Draggable2D : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (((1 << other.gameObject.layer) & stickyMask) != 0)
+        if ((((1 << other.gameObject.layer) & stickyMask) != 0) && IsStickable)
         {
             rb.gravityScale = 0;
             rb.velocity = Vector2.zero;
@@ -147,7 +176,7 @@ public class Draggable2D : MonoBehaviour
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        if (((1 << other.gameObject.layer) & stickyMask) != 0)
+        if ((((1 << other.gameObject.layer) & stickyMask) != 0) && IsStickable)
         {
             if (!isDragging)
                 rb.gravityScale = 1;
@@ -155,26 +184,120 @@ public class Draggable2D : MonoBehaviour
         }
     }
     
-    private void ScanNearbySquares()
+        // --- Проверяем близость к несовместимым квадратам ---
+    private void CheckForConflictProximity()
     {
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, DETECTION_RADIUS, detectionMask);
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, detectionRadius, detectionMask);
 
-        foreach (Collider2D hit in hits)
+        foreach (var hit in hits)
         {
-            if (hit.gameObject == this.gameObject) continue; // себя пропускаем
+            if (hit.gameObject == this.gameObject) continue;
 
             Draggable2D other = hit.GetComponent<Draggable2D>();
             if (other == null) continue;
 
-            // Проверяем несовместимость типов
-            if (IsIncompatibleWith(other.type))
-            {
-                Debug.Log($"{name} ({type}) слишком близко к {other.name} ({other.type})!");
+            if (!IsIncompatibleWith(other.type)) continue;
 
-                // Например — можно чуть оттолкнуть
-                //Vector2 away = (transform.position - other.transform.position).normalized;
-                //rb.AddForce(away * 5f, ForceMode2D.Impulse);
+            float dist = Vector2.Distance(rb.position, other.rb.position);
+
+            // Если достаточно близко — начинаем отсчет
+            if (dist < detectionRadius)
+            {
+                var pair = GetOrderedPair(this, other);
+
+                if (!activeExplosions.ContainsKey(pair))
+                {
+                    Coroutine c = StartCoroutine(ExplosionCountdown(other, pair));
+                    activeExplosions[pair] = c;
+
+                    // 🎞 Место для запуска анимации зарядки
+                    WarningShake();
+                    other.WarningShake();
+                }
             }
+        }
+    }
+
+    private IEnumerator ExplosionCountdown(Draggable2D other, (Draggable2D, Draggable2D) pair)
+    {
+        float timer = 0f;
+
+        while (timer < explosionDelay)
+        {
+            if (this == null || other == null)
+                yield break;
+
+            float dist = Vector2.Distance(rb.position, other.rb.position);
+
+            if (dist > detectionRadius)
+            {
+                // ❌ Квадраты разошлись — отменяем взрыв
+                StopShake();
+                other.StopShake();
+
+                activeExplosions.Remove(pair);
+                yield break;
+            }
+
+            timer += Time.deltaTime;
+            yield return null;
+        }
+
+        // 💥 Взрыв через 3 секунды
+        Vector2 explosionPoint = (rb.position + other.rb.position) / 2f;
+        CreateExplosion(explosionPoint);
+
+        StopShake();
+        other.StopShake();
+
+        activeExplosions.Remove(pair);
+    }
+
+    private void CreateExplosion(Vector2 position)
+    {
+        float explosionRadius = 2f;
+        float explosionForce = 10f;
+        float upwardModifier = 0.4f; // ← подброс вверх (0.3–0.6 хорошо смотрится)
+
+        Collider2D[] affected = Physics2D.OverlapCircleAll(position, explosionRadius);
+        foreach (var hit in affected)
+        {
+            Rigidbody2D body = hit.attachedRigidbody;
+            if (body == null) continue;
+
+            Vector2 dir = (body.position - position);
+            float dist = dir.magnitude;
+            if (dist < 0.001f) continue;
+
+            float falloff = 1f - Mathf.Clamp01(dist / explosionRadius);
+
+            // Добавляем немного вертикальной силы
+            dir.Normalize();
+            dir.y += upwardModifier; 
+            dir.Normalize();
+
+            Vector2 force = dir * (explosionForce * falloff);
+            body.AddForce(force, ForceMode2D.Impulse);
+        }
+
+        Debug.DrawRay(position, Vector3.up * 0.5f, Color.red, 1f);
+    }
+    
+    private void HandleRotationInput()
+    {
+        float rotationDelta = 0f;
+
+        if (Input.GetKey(KeyCode.D))
+            rotationDelta = -rotationSpeed * Time.fixedDeltaTime; // по часовой вокруг Z
+
+        if (Input.GetKey(KeyCode.A))
+            rotationDelta = rotationSpeed * Time.fixedDeltaTime;  // против часовой вокруг Z
+
+        if (Mathf.Abs(rotationDelta) > 0.001f)
+        {
+            // Явное вращение по оси Z
+            float newAngle = rb.rotation + rotationDelta;
+            rb.MoveRotation(newAngle);
         }
     }
 
@@ -187,10 +310,38 @@ public class Draggable2D : MonoBehaviour
 
         return false;
     }
+    
+    // Вспомогательная функция — уникальный ключ для пары квадратов
+    private static (Draggable2D, Draggable2D) GetOrderedPair(Draggable2D a, Draggable2D b)
+    {
+        return a.GetInstanceID() < b.GetInstanceID() ? (a, b) : (b, a);
+    }
 
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, DETECTION_RADIUS);
+        Gizmos.DrawWireSphere(transform.position, detectionRadius);
+    }
+
+    public void WarningShake()
+    {
+        animator.WarningShake();
+    }
+
+    public void StopShake()
+    {
+        animator.StopShake();
+    }
+
+    public bool CheckStable()
+    {
+        if (!GameManager.Instance.GetFloorCollider().OverlapPoint(transform.position)&&!isDragging&&rb.velocity.magnitude<0.1f)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 }
