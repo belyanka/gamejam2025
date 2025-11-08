@@ -17,6 +17,7 @@ public class Draggable2D : MonoBehaviour
     private Collider2D col;
     private bool isDragging = false;
     private bool isSticky = false;
+    private bool isGoingToExplode = false;
     private Vector3 mouseOffset;
     private float mouseZ;
 
@@ -222,6 +223,8 @@ public class Draggable2D : MonoBehaviour
     {
         float timer = 0f;
 
+        isGoingToExplode = true;
+        
         while (timer < explosionDelay)
         {
             if (this == null || other == null)
@@ -235,6 +238,7 @@ public class Draggable2D : MonoBehaviour
                 StopShake();
                 other.StopShake();
 
+                isGoingToExplode = false;
                 activeExplosions.Remove(pair);
                 yield break;
             }
@@ -250,6 +254,7 @@ public class Draggable2D : MonoBehaviour
         StopShake();
         other.StopShake();
 
+        isGoingToExplode = false;
         activeExplosions.Remove(pair);
     }
 
@@ -335,7 +340,7 @@ public class Draggable2D : MonoBehaviour
 
     public bool CheckStable()
     {
-        if (!GameManager.Instance.GetFloorCollider().OverlapPoint(transform.position)&&!isDragging&&rb.velocity.magnitude<0.1f)
+        if (!GameManager.Instance.GetFloorCollider().OverlapPoint(transform.position)&&!isDragging&&rb.velocity.magnitude<0.1f&&!isGoingToExplode)
         {
             return true;
         }
