@@ -261,8 +261,8 @@ public class Draggable2D : MonoBehaviour
     private void CreateExplosion(Vector2 position)
     {
         float explosionRadius = 2f;
-        float explosionForce = 10f;
-        float upwardModifier = 0.4f; // ← подброс вверх (0.3–0.6 хорошо смотрится)
+        float explosionForce = 8f;
+        float upwardModifier = 0.6f; // ← подброс вверх (0.3–0.6 хорошо смотрится)
 
         Collider2D[] affected = Physics2D.OverlapCircleAll(position, explosionRadius);
         foreach (var hit in affected)
@@ -285,7 +285,44 @@ public class Draggable2D : MonoBehaviour
             body.AddForce(force, ForceMode2D.Impulse);
         }
 
+        StartCoroutine(IgnoreRoutine(affected));
+
         Debug.DrawRay(position, Vector3.up * 0.5f, Color.red, 1f);
+    }
+
+    IEnumerator IgnoreRoutine(Collider2D[] affected)
+    {
+        Collider2D[] allColliders = GameManager.Instance.GetAllColliders();
+        
+        // Выключаем столкновения
+        foreach (var bustedCol in affected)
+        {
+            foreach (Collider2D col in allColliders)
+            {
+                if (col.gameObject.layer == LayerMask.NameToLayer("Shelve"))
+                {
+                    Physics2D.IgnoreCollision(bustedCol, col, true);
+                }
+            }
+        }
+
+        
+        Debug.Log($"Отключено столкновение между Shelve и взорванным");
+
+        yield return new WaitForSeconds(0.2f);
+
+        // Возвращаем обратно
+        foreach (var bustedCol in affected)
+        {
+            foreach (Collider2D col in allColliders)
+            {
+                if (col.gameObject.layer == LayerMask.NameToLayer("Shelve"))
+                {
+                    Physics2D.IgnoreCollision(bustedCol, col, false);
+                }
+            }
+        }
+        Debug.Log($"Включено столкновение между Shelve и взорванным");
     }
     
     private void HandleRotationInput()
