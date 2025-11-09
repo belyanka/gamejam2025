@@ -1382,6 +1382,8 @@ MonoBehaviour:
   floorCollider: {fileID: 766891087}
   finishPanel: {fileID: 157638500}
   startPanel: {fileID: 469728783}
+  explosionVfx: {fileID: 7183019904699398392, guid: 0a62d3981731d0d42a9679fa80f3f584,
+    type: 3}
 --- !u!1 &634967988
 GameObject:
   m_ObjectHideFlags: 0

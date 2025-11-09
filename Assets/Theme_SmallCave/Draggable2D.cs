@@ -284,6 +284,8 @@ public class Draggable2D : MonoBehaviour
             Vector2 force = dir * (explosionForce * falloff);
             body.AddForce(force, ForceMode2D.Impulse);
         }
+        
+        GameManager.Instance.SpawnExplosion(position);
 
         StartCoroutine(IgnoreRoutine(affected));
 
@@ -345,9 +347,9 @@ public class Draggable2D : MonoBehaviour
 
     private bool IsIncompatibleWith(SquareType other)
     {
-        // 🔴 Пример правил: синий не любит красный
-        if ((type == SquareType.Blue && other == SquareType.Red) ||
-            (type == SquareType.Red && other == SquareType.Blue))
+        // 🔴 Пример правил: синий не любит синий, красный не любит красный
+        if ((type == SquareType.Blue && other == SquareType.Blue) ||
+            (type == SquareType.Red && other == SquareType.Red))
             return true;
 
         return false;

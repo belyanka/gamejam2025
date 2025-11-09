@@ -11,6 +11,7 @@ public class GameManager : MonoBehaviour
     public Collider2D floorCollider;
     public CanvasGroup finishPanel;
     public CanvasGroup startPanel;
+    public GameObject explosionVfx;
 
     private List<Draggable2D> itemsList;
     private Collider2D[] allColliders;
@@ -100,5 +101,10 @@ public class GameManager : MonoBehaviour
     {
         Scene currentScene = SceneManager.GetActiveScene();
         SceneManager.LoadScene(currentScene.buildIndex);
+    }
+
+    public void SpawnExplosion(Vector3 position)
+    {
+        Instantiate(explosionVfx, position, Quaternion.identity);
     }
 }
