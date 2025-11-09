@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -28,7 +29,7 @@ public class GameManager : MonoBehaviour
         Instance = this;
 
         // 🔹 Сохраняем объект при смене сцен
-        DontDestroyOnLoad(gameObject);
+        //DontDestroyOnLoad(gameObject);
         
         
         int layerToFind = LayerMask.NameToLayer("Item"); // имя слоя
@@ -48,6 +49,9 @@ public class GameManager : MonoBehaviour
         
         finished = false;
         finishPanel.gameObject.SetActive(false);
+
+        startPanel.gameObject.SetActive(true);
+        startPanel.DOFade(1f, 0.4f);
     }
 
     public void Update()
@@ -90,5 +94,11 @@ public class GameManager : MonoBehaviour
         {
             startPanel.gameObject.SetActive(false);
         });
+    }
+
+    public void RestartScene()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.buildIndex);
     }
 }

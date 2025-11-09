@@ -132,29 +132,29 @@ public class Draggable2D : MonoBehaviour
         mouseVelocity = (currentMouseWorld - lastMouseWorldPos) / Time.fixedDeltaTime;
         lastMouseWorldPos = currentMouseWorld;
 
-        if (distance > 0f)
+        if (distance <= 0f)
+            return;
+
+        direction.Normalize();
+
+        RaycastHit2D[] hits = new RaycastHit2D[4];
+        ContactFilter2D filter = new ContactFilter2D();
+        filter.SetLayerMask(wallMask);
+        filter.useTriggers = false;
+
+        int hitCount = rb.Cast(direction, filter, hits, distance);
+
+        if (hitCount == 0)
         {
-            direction.Normalize();
-
-            RaycastHit2D hit = Physics2D.BoxCast(
-                currentPos,
-                col.bounds.size,
-                0f,
-                direction,
-                distance,
-                wallMask
-            );
-
-            if (hit.collider == null)
-            {
-                rb.MovePosition(targetPos);
-            }
-            else
-            {
-                float safeDistance = hit.distance - 0.01f;
-                Vector2 safePos = currentPos + direction * Mathf.Max(safeDistance, 0f);
-                rb.MovePosition(safePos);
-            }
+            // Свободное движение
+            rb.MovePosition(targetPos);
+        }
+        else
+        {
+            // Есть препятствие
+            float safeDistance = hits[0].distance - 0.01f;
+            Vector2 safePos = currentPos + direction * Mathf.Max(safeDistance, 0f);
+            rb.MovePosition(safePos);
         }
     }
 
@@ -361,8 +361,16 @@ public class Draggable2D : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, detectionRadius);
+        if (type == SquareType.Blue)
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawWireSphere(transform.position, detectionRadius);
+        }
+        else if (type == SquareType.Red)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(transform.position, detectionRadius);
+        }
     }
 
     public void WarningShake()
