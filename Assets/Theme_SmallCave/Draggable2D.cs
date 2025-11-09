@@ -68,11 +68,12 @@ public class Draggable2D : MonoBehaviour
             return;
         
         // Если объект был приклеен — отклеиваем
-        if (isSticky)
+        /*if (isSticky)
         {
             rb.gravityScale = 1;
             isSticky = false;
         }
+        */
 
         rb.bodyType = RigidbodyType2D.Kinematic;
         rb.velocity = Vector2.zero;
@@ -188,7 +189,8 @@ public class Draggable2D : MonoBehaviour
         // --- Проверяем близость к несовместимым квадратам ---
     private void CheckForConflictProximity()
     {
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, detectionRadius, detectionMask);
+        Vector2 center = col.bounds.center;
+        Collider2D[] hits = Physics2D.OverlapCircleAll(center, detectionRadius, detectionMask);
 
         foreach (var hit in hits)
         {
@@ -199,7 +201,7 @@ public class Draggable2D : MonoBehaviour
 
             if (!IsIncompatibleWith(other.type)) continue;
 
-            float dist = Vector2.Distance(rb.position, other.rb.position);
+            float dist = Vector2.Distance(center, other.col.bounds.center);
 
             // Если достаточно близко — начинаем отсчет
             if (dist < detectionRadius)
@@ -229,8 +231,8 @@ public class Draggable2D : MonoBehaviour
         {
             if (this == null || other == null)
                 yield break;
-
-            float dist = Vector2.Distance(rb.position, other.rb.position);
+            
+            float dist = Vector2.Distance(col.bounds.center, other.col.bounds.center);
 
             if (dist > detectionRadius)
             {
@@ -248,7 +250,7 @@ public class Draggable2D : MonoBehaviour
         }
 
         // 💥 Взрыв через 3 секунды
-        Vector2 explosionPoint = (rb.position + other.rb.position) / 2f;
+        Vector2 explosionPoint = (col.bounds.center + other.col.bounds.center) / 2f;
         CreateExplosion(explosionPoint);
 
         StopShake();
@@ -366,12 +368,12 @@ public class Draggable2D : MonoBehaviour
         if (type == SquareType.Blue)
         {
             Gizmos.color = Color.blue;
-            Gizmos.DrawWireSphere(transform.position, detectionRadius);
+            Gizmos.DrawWireSphere(col.bounds.center, detectionRadius);
         }
         else if (type == SquareType.Red)
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position, detectionRadius);
+            Gizmos.DrawWireSphere(col.bounds.center, detectionRadius);
         }
     }
 
