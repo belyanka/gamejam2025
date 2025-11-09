@@ -20,6 +20,7 @@ public class Draggable2D : MonoBehaviour
     private bool isGoingToExplode = false;
     private Vector3 mouseOffset;
     private float mouseZ;
+    private int stickyCounter = 0;
 
     public bool IsStickable = false;
     
@@ -96,7 +97,7 @@ public class Draggable2D : MonoBehaviour
         
         rb.bodyType = RigidbodyType2D.Dynamic;
 
-        if (isSticky)
+        if (IsSticky())
         {
             rb.gravityScale = 0;
             rb.velocity = Vector2.zero; // не бросаем, если "прилип"
@@ -111,6 +112,12 @@ public class Draggable2D : MonoBehaviour
         isDragging = false;
     }
 
+    private bool IsSticky()
+    {
+        return stickyCounter > 0;
+    }
+    
+
     private void FixedUpdate()
     {
         if (isDragging)
@@ -118,6 +125,16 @@ public class Draggable2D : MonoBehaviour
             HandleRotationInput();
         }
         
+        if (IsSticky())
+        {
+            rb.gravityScale = 0;
+            rb.velocity = Vector2.zero; // не бросаем, если "прилип"
+        }
+        else
+        {
+            rb.gravityScale = 1;
+        }
+
         CheckForConflictProximity();
         
         if (!isDragging) return;
@@ -172,7 +189,7 @@ public class Draggable2D : MonoBehaviour
         {
             rb.gravityScale = 0;
             rb.velocity = Vector2.zero;
-            isSticky = true;
+            stickyCounter++;
         }
     }
 
@@ -182,7 +199,7 @@ public class Draggable2D : MonoBehaviour
         {
             if (!isDragging)
                 rb.gravityScale = 1;
-            isSticky = false;
+            stickyCounter--;
         }
     }
     
