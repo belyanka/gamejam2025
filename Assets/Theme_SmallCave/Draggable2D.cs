@@ -278,9 +278,9 @@ public class Draggable2D : MonoBehaviour
 
     private void CreateExplosion(Vector2 position)
     {
-        float explosionRadius = 2f;
-        float explosionForce = 8f;
-        float upwardModifier = 0.6f; // ← подброс вверх (0.3–0.6 хорошо смотрится)
+        float explosionRadius = 5f;
+        float explosionForce = 12f;
+        float upwardModifier = 0.8f; // ← подброс вверх (0.3–0.6 хорошо смотрится)
 
         Collider2D[] affected = Physics2D.OverlapCircleAll(position, explosionRadius);
         foreach (var hit in affected)
