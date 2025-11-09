@@ -16,7 +16,6 @@ public class Draggable2D : MonoBehaviour
     private Rigidbody2D rb;
     private Collider2D col;
     private bool isDragging = false;
-    private bool isSticky = false;
     private bool isGoingToExplode = false;
     private Vector3 mouseOffset;
     private float mouseZ;
